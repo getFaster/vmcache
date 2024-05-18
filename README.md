@@ -1,45 +1,38 @@
 # vmcache
 
-Code repository for SIGMOD'23 paper [Virtual-Memory Assisted Buffer Management](https://www.cs.cit.tum.de/fileadmin/w00cfj/dis/_my_direct_uploads/vmcache.pdf). This is the buffer manager implementation. [exmap](https://github.com/tuhhosg/exmap) is in a separate repository.
+For a detailed introduction, please refer to the original author's code [vmcache](https://github.com/viktorleis/vmcache). This document focuses on our modifications.
 
-## Environment Variables
+## Code Overview
 
-* BLOCK: storage block device (e.g. /dev/nvme0n1 or /dev/md0); default=/tmp/bm
-* VIRTGB: virtual memory allocation in GB (e.g., 1024), should be at least device size; default=16
-* PHYSGB: physical memory allocation in GB = buffer pool size, should be less than available RAM; default=4
-* EXMAP: if non-zero, use exmap interface, requires exmap kernel module; default=0
-* BATCH: batch size for eviction in pages; default=64
-* RUNFOR: benchmark run duration in seconds; default=30
-* RNDREAD: if non-zero, run random read benchmark, otherwise TPC-C; default=0
-* THREADS: number of threads; default=1
-* DATASIZE: number of warehouses for TPC-C, number of tuples for random read benchmark; default=10
+vmcache is an implementation of an efficient buffer manager and B-tree data structure designed for managing and accessing large-scale data. The programs in the `./src` directory are based on the original version but have been modified in various ways to enhance the performance of vmcache. The modifications include bitmap, futex, merge, mutex, and yopt approaches. Besides completing the author's TODOs, the aim is to improve the overall efficiency of vmcache.
 
-## Example Command Lines
+- **bitmap**: Implements free space management for storage.
+- **futex** and **mutex**: Handle mutual exclusion locks.
+- **merge**: Completes the unfinished B-tree inner node merge by the original author.
+- **yopt**: Dynamically adjusts the waiting strategy of the original spinlock based on the duration.
 
-* TPC-C, 4 threads, 2 warehouses: `BLOCK=/dev/nvme0n1 THREADS=4 DATASIZE=2 ./vmcache`
-* random read, 10 threads, 1 million tuples: `BLOCK=/dev/md0 THREADS=10 DATASIZE=1e6 ./vmcache`
+Additional files:
 
-## Dependencies and Configuration
+- `colab_example.ipynb`: An example of how to execute the program, intended to be run on Google Colab.
+- `test.sh`: A script for automated testing.
+- `test_analysis.py`: Calculates the average from each program execution's output and writes the results to a file.
+- `plot_data.py`: Visualizes the data from the results file.
+- `plot_cmp.py`: Compares multiple data sets using line charts, with results available in `./pic`.
+- `plot_cmp_sub.py`: Creates five subplots to compare each of the five methods with the original implementation for clearer presentation, with results available in `./pic_sub`.
 
-We need the libaoi library. On Ubuntu: `sudo apt install libaio-dev`.
-You will probably also need to set `vm.overcommit_memory = 1` in `/etc/sysctl.conf`. Otherwise larger values of VIRTGB will not work.
+## Comparison Data
 
-If you want to use EXMAP, you need the [exmap kernel module](https://github.com/tuhhosg/exmap).
+- **tx**: Transaction throughput.
+- **rmb** and **wmb**: Read and write throughput, respectively.
+- **Data size**: Ranges from 5 to 85, in increments of 5.
+- **Benchmarks**: Includes Random read benchmark and TPC-C.
 
-## Citation
+There are six data sets in total, including the original version. All data sets are presented in a line chart available in `./pic`. Comparisons between each method and the original version are available in `./pic_sub`.
 
-Please cite the paper as follows:
+## Environment
 
-```
-@inproceedings{vmcache,
-  author    = {Viktor Leis and Adnan Alhomssi and Tobias Ziegler and Yannick Loeck and Christian Dietrich},
-  title     = {Virtual-Memory Assisted Buffer Management},
-  booktitle = {SIGMOD},
-  year      = {2023},
-}
-```
+The code is executed using Google Colab. For detailed instructions, please refer to `colab_example.ipynb`. The code requires an environment running Ubuntu 22.04 or later, with GCC version 10.0 or higher. The program uses a Loop Device to simulate storage access.
 
-## Low-Hanging Fruit (TODO)
+- **Colab CPU**: Intel(R) Xeon(R) CPU @ 2.20GHz, 2 cores, 4 threads.
 
-* use C++ wait/notify to handle lock contention instead of spinning
-* implement free space management for storage
+**Note**: When running `test.sh`, if the data size exceeds 30, a `structure needs cleaning` issue might occur. In such cases, you must manually execute the commands one by one.
