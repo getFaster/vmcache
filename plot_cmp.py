@@ -53,10 +53,10 @@ def plot_multiple_data(files, title, labels):
 
 if __name__ == '__main__':
 
-    plot_multiple_data(['./data/result_rnd_o.txt', './data/result_rnd_m.txt', './data/result_rnd_mm.txt', './data/result_rnd_f.txt', './data/result_rnd_y.txt'], 
+    plot_multiple_data(['./data/result_rnd_o.txt', './data/result_rnd_m.txt', './data/result_rnd_me.txt', './data/result_rnd_f.txt', './data/result_rnd_y.txt'], 
                        'Random Lookup', 
-                       ['Original', 'Mutex', 'Mutex + Merge', 'Futex', 'Yield-Opt'])
+                       ['Original', 'Mutex', 'Merge', 'Futex', 'Yield-Opt'])
     
-    plot_multiple_data(['./data/result_o.txt', './data/result_m.txt', './data/result_mm.txt', './data/result_f.txt', './data/result_y.txt'], 
+    plot_multiple_data(['./data/result_o.txt', './data/result_m.txt', './data/result_me.txt', './data/result_f.txt', './data/result_y.txt'], 
                        'TPC-C', 
-                       ['Original', 'Mutex', 'Mutex + Merge', 'Futex', 'Yield-Opt'])
+                       ['Original', 'Mutex', 'Merge', 'Futex', 'Yield-Opt'])

@@ -29,7 +29,7 @@ def plot_multiple_data(files, title, labels):
 
         plt.suptitle(f"{title}: {column}")
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        plt.savefig(f"./pic/{title}_{column}_comparison.png")  # 儲存圖片
+        plt.savefig(f"./pic_sub/{title}_{column}_comparison.png")  # 儲存圖片
         plt.close()
 
 if __name__ == '__main__':
