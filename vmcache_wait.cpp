@@ -339,6 +339,9 @@ struct LibaioInterface {
     }
 };
 
+template <class T>
+struct GuardX;
+
 struct BufferManager {
     static const u64 mb = 1024ull * 1024;
     static const u64 gb = 1024ull * 1024 * 1024;
@@ -385,6 +388,9 @@ struct BufferManager {
     void handleFault(PID pid);
     void readPage(PID pid);
     void evict();
+
+    template <class T>
+    void free(GuardX<T> obj);
 };
 
 BufferManager bm;
@@ -564,6 +570,13 @@ struct GuardX {
     // copy constructor
     GuardX(const GuardX&) = delete;
 
+    GuardX(GuardX&& other) {
+        pid = other.pid;
+        ptr = other.ptr;
+        other.pid = moved;
+        other.ptr = nullptr;
+    }
+
     // destructor
     ~GuardX() {
         if (pid != moved) bm.unfixX(pid);
@@ -574,12 +587,14 @@ struct GuardX {
         return ptr;
     }
 
-    void release() {
+    void release(bool evicted) {
         if (pid != moved) {
-            bm.unfixX(pid);
+            if (!evicted) bm.unfixX(pid);
             pid = moved;
         }
     }
+
+    void release() { release(false); }
 };
 
 template <class T>
@@ -905,6 +920,28 @@ void BufferManager::evict() {
     }
 
     physUsedCount -= toEvict.size();
+}
+
+template <class T>
+void BufferManager::free(GuardX<T> obj) {
+    PID pid = obj.pid;
+
+    // 1. remove from page table
+    if (useExmap) {
+        exmapInterface[workerThreadId]->iov[0].page = pid;
+        exmapInterface[workerThreadId]->iov[0].len = 1;
+        if (exmapAction(exmapfd, EXMAP_OP_FREE, 1) < 0) die("ioctl: EXMAP_OP_FREE");
+    } else {
+        madvise(virtMem + pid, pageSize, MADV_DONTNEED);
+    }
+
+    // 5. remove from hash table and unlock
+    bool succ = residentSet.remove(pid);
+    assert(succ);
+    getPageState(pid).unlockXEvicted();
+    obj.release(true);
+
+    --physUsedCount;
 }
 
 //---------------------------------------------------------------------------
@@ -1637,7 +1674,8 @@ bool BTree::remove(span<u8> key) {
                 if (rightLocked->freeSpaceAfterCompaction() >=
                     (pageSize - BTreeNodeHeader::underFullSize)) {
                     if (nodeLocked->mergeNodes(pos, parentLocked.ptr, rightLocked.ptr)) {
-                        // XXX: should reuse page Id
+                        // reuse page Id
+                        bm.free(move(rightLocked));
                     }
                 }
             } else {
